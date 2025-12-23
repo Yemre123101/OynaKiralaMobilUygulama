@@ -6,6 +6,7 @@ export default function ToyCard({ toy, userId }) {
   const [showRentForm, setShowRentForm] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("card");
 
   const handleRent = async () => {
     if (!startDate || !endDate) {
@@ -22,6 +23,7 @@ export default function ToyCard({ toy, userId }) {
           renterId: userId,
           startDate,
           endDate,
+          paymentMethod,
         }),
       });
       alert("Oyuncak kiralandı!");
@@ -74,6 +76,18 @@ export default function ToyCard({ toy, userId }) {
               onChange={(e) => setEndDate(e.target.value)}
               className="border p-1 rounded w-full"
             />
+          </label>
+
+          <label>
+            Ödeme Yöntemi:
+            <select
+              className="border p-1 rounded w-full"
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+            >
+              <option value="card">Kart ile Ödeme</option>
+              <option value="cash">Kapıda Ödeme</option>
+            </select>
           </label>
 
           <button
