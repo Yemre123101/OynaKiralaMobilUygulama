@@ -3,8 +3,11 @@ import { Link, useLocation } from 'react-router-dom';
 export default function Navbar() {
     const location = useLocation();
 
-    // Hide navbar in individual chat rooms
-    if (location.pathname.startsWith('/sohbet/') && location.pathname.split('/').length > 2) {
+    // Hide navbar in individual chat rooms and toy details
+    if (
+        (location.pathname.startsWith('/sohbet/') && location.pathname.split('/').length > 2) ||
+        location.pathname.startsWith('/oyuncak/')
+    ) {
         return null;
     }
 
