@@ -17,6 +17,7 @@ export default function EditToy() {
     const [ageRange, setAgeRange] = useState("");
     const [price, setPrice] = useState("");
     const [categories, setCategories] = useState([]);
+    const [gender, setGender] = useState("Unisex");
     const [image, setImage] = useState(null);
     const [preview, setPreview] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -45,6 +46,7 @@ export default function EditToy() {
                     setAgeRange(data.ageRange);
                     setPrice(data.price);
                     setCategories(data.categories || []);
+                    setGender(data.gender || "Unisex");
                     setPreview(data.imageUrl);
                 } else {
                     alert("Oyuncak bulunamadı!");
@@ -100,6 +102,7 @@ export default function EditToy() {
                 description,
                 city,
                 categories,
+                gender,
                 ageRange,
                 price,
                 imageUrl,
@@ -184,6 +187,24 @@ export default function EditToy() {
                         ))}
                     </div>
                 </div>
+
+                <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700 font-sans">Cinsiyet</label>
+                    <div className="flex gap-2">
+                        {["Erkek", "Kız", "Unisex"].map(g => (
+                            <label key={g} className={`flex-1 flex items-center justify-center p-2 border rounded-xl cursor-pointer transition-colors ${gender === g ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-gray-200 text-gray-600'}`}>
+                                <input
+                                    type="radio"
+                                    className="hidden"
+                                    checked={gender === g}
+                                    onChange={() => setGender(g)}
+                                />
+                                <span className="text-sm font-sans">{g}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+
 
                 <div className="flex space-x-2">
                     <div className="flex-1">

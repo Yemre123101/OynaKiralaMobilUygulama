@@ -15,6 +15,7 @@ export default function AddToy() {
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [gender, setGender] = useState("Unisex");
   const [loading, setLoading] = useState(false);
 
   const toyCategories = [
@@ -66,6 +67,7 @@ export default function AddToy() {
         description,
         city,
         categories,
+        gender,
         ageRange,
         price,
         imageUrl,
@@ -82,6 +84,7 @@ export default function AddToy() {
       setDescription("");
       setCity("");
       setCategories([]);
+      setGender("Unisex");
       setAgeRange("");
       setPrice("");
       setImage(null);
@@ -252,6 +255,24 @@ export default function AddToy() {
             ))}
           </div>
         </div>
+
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">Cinsiyet</label>
+          <div className="flex gap-2">
+            {["Erkek", "Kız", "Unisex"].map(g => (
+              <label key={g} className={`flex-1 flex items-center justify-center p-2 border rounded-xl cursor-pointer transition-colors ${gender === g ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-gray-200 text-gray-600'}`}>
+                <input
+                  type="radio"
+                  className="hidden"
+                  checked={gender === g}
+                  onChange={() => setGender(g)}
+                />
+                <span className="text-sm">{g}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
 
         <input
           type="text"

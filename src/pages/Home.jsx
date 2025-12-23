@@ -11,6 +11,15 @@ export default function Home() {
   const [toys, setToys] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [userCity, setUserCity] = useState(null);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    ageRange: "",
+    gender: "",
+    minPrice: "",
+    maxPrice: "",
+    city: "",
+    category: ""
+  });
 
   useEffect(() => {
     // Fetch User City
@@ -71,17 +80,29 @@ export default function Home() {
     return result.slice(0, 4); // Show top 4 interesting ones
   })();
 
+  const applyFilters = (toy) => {
+    const matchesSearch = toy.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesAge = filters.ageRange ? toy.ageRange?.includes(filters.ageRange) : true;
+    const matchesGender = filters.gender ? toy.gender === filters.gender : true;
+    const matchesMinPrice = filters.minPrice ? parseFloat(toy.price) >= parseFloat(filters.minPrice) : true;
+    const matchesMaxPrice = filters.maxPrice ? parseFloat(toy.price) <= parseFloat(filters.maxPrice) : true;
+    const matchesCity = filters.city ? toy.city === filters.city : true;
+    const matchesCategory = filters.category ? toy.categories?.includes(filters.category) : true;
+
+    return matchesSearch && matchesAge && matchesGender && matchesMinPrice && matchesMaxPrice && matchesCity && matchesCategory;
+  };
+
   const recommendedToys = toys.filter(toy =>
     toy.isAvailable &&
     userCity &&
     toy.city === userCity &&
-    toy.name.toLowerCase().includes(searchTerm.toLowerCase())
+    applyFilters(toy)
   );
 
   const otherToys = toys.filter(toy =>
     toy.isAvailable &&
     (!userCity || toy.city !== userCity) &&
-    toy.name.toLowerCase().includes(searchTerm.toLowerCase())
+    applyFilters(toy)
   );
 
   const ToyCard = ({ toy }) => (
@@ -107,6 +128,11 @@ export default function Home() {
         <span className="flex items-center">
           <span className="mr-1">📍</span> {toy.city}
         </span>
+        {toy.gender && (
+          <span className="flex items-center">
+            <span className="mr-1">{toy.gender === "Erkek" ? "👦" : toy.gender === "Kız" ? "👧" : "🚻"}</span> {toy.gender}
+          </span>
+        )}
       </div>
 
       <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
@@ -127,19 +153,147 @@ export default function Home() {
 
       {/* Arama Çubuğu */}
       <div className="mb-4 sticky top-0 bg-gray-50 z-10 py-2">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Oyuncak adı ile ara..."
-            className="w-full p-3 pl-10 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 absolute left-3 top-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Oyuncak adı ile ara..."
+              className="w-full p-3 pl-10 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 absolute left-3 top-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <button
+            onClick={() => setIsFilterOpen(true)}
+            className={`p-3 border rounded-xl shadow-sm transition-all ${Object.values(filters).some(v => v !== "") ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+          </button>
         </div>
       </div>
+
+      {/* Filtreleme Modalı */}
+      {isFilterOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50">
+          <div className="bg-white w-full max-w-md rounded-t-3xl p-6 shadow-2xl animate-slide-up overflow-y-auto max-h-[90vh]">
+            <div className="flex justify-between items-center mb-6 border-b pb-4">
+              <h3 className="text-xl font-bold text-gray-800">Filtrele</h3>
+              <button onClick={() => setIsFilterOpen(false)} className="text-gray-400 hover:text-gray-600 p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              {/* Yaş Aralığı */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Yaş Aralığı</label>
+                <select
+                  value={filters.ageRange}
+                  onChange={(e) => setFilters({ ...filters, ageRange: e.target.value })}
+                  className="w-full border border-gray-200 p-3 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="">Hepsi</option>
+                  <option value="0-3">0-3 Yaş</option>
+                  <option value="3-6">3-6 Yaş</option>
+                  <option value="6-9">6-9 Yaş</option>
+                  <option value="9-12">9-12 Yaş</option>
+                  <option value="12+">12+ Yaş</option>
+                </select>
+              </div>
+
+              {/* Cinsiyet */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Cinsiyet</label>
+                <div className="flex gap-2">
+                  {["Erkek", "Kız", "Unisex"].map(gender => (
+                    <button
+                      key={gender}
+                      onClick={() => setFilters({ ...filters, gender: filters.gender === gender ? "" : gender })}
+                      className={`flex-1 py-2 px-3 border rounded-xl text-sm font-medium transition-all ${filters.gender === gender ? "bg-blue-600 border-blue-600 text-white shadow-md scale-105" : "bg-white border-gray-200 text-gray-600 hover:border-blue-400"}`}
+                    >
+                      {gender}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Fiyat Aralığı */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Fiyat Aralığı (₺/gün)</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={filters.minPrice}
+                    onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })}
+                    className="w-full border border-gray-200 p-3 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                  <span className="text-gray-400">-</span>
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={filters.maxPrice}
+                    onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
+                    className="w-full border border-gray-200 p-3 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Şehir */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Şehir</label>
+                <select
+                  value={filters.city}
+                  onChange={(e) => setFilters({ ...filters, city: e.target.value })}
+                  className="w-full border border-gray-200 p-3 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="">Tüm Şehirler</option>
+                  {Array.from(new Set(toys.map(t => t.city).filter(Boolean))).sort().map(city => (
+                    <option key={city} value={city}>{city}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Kategori */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Kategori</label>
+                <select
+                  value={filters.category}
+                  onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+                  className="w-full border border-gray-200 p-3 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="">Tüm Kategoriler</option>
+                  {["Action Figures", "Animals", "Educational", "Dolls", "Electronic", "Creative", "Sports", "Other"].map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => setFilters({ ageRange: "", gender: "", minPrice: "", maxPrice: "", city: "", category: "" })}
+                  className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600 font-bold hover:bg-gray-50 transition-all"
+                >
+                  Temizle
+                </button>
+                <button
+                  onClick={() => setIsFilterOpen(false)}
+                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all"
+                >
+                  Uygula
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* "İlgini Çekebilecekler" Section */}
       {interestedToys.length > 0 && (
