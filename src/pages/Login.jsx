@@ -8,7 +8,8 @@ import {
     RecaptchaVerifier,
     signInWithPhoneNumber
 } from 'firebase/auth';
-import { auth } from '../firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 
 export default function Login() {
     const [isLogin, setIsLogin] = useState(true);
@@ -17,6 +18,11 @@ export default function Login() {
     // Email state
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+
+    // Additional User Info State (For Registration)
+    const [city, setCity] = useState('');
+    const [age, setAge] = useState('');
+    const [gender, setGender] = useState('');
 
     // Phone state
     const [phoneNumber, setPhoneNumber] = useState('');
@@ -35,13 +41,82 @@ export default function Login() {
             if (isLogin) {
                 await signInWithEmailAndPassword(auth, email, password);
             } else {
-                await createUserWithEmailAndPassword(auth, email, password);
+                // Registration
+                if (!city || !age || !gender) {
+                    setError('Lütfen tüm alanları doldurunuz (Şehir, Yaş, Cinsiyet).');
+                    return;
+                }
+
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // Save additional info to Firestore
+                await setDoc(doc(db, "users", user.uid), {
+                    email: user.email,
+                    city: city,
+                    age: age,
+                    gender: gender,
+                    createdAt: new Date(),
+                    userFriendlyId: Math.floor(100000 + Math.random() * 900000).toString() // Generate ID on signup
+                });
             }
             navigate('/');
         } catch (err) {
             handleError(err);
         }
     };
+
+    // ... (rest of the functions: handleGoogleLogin, setupRecaptcha, handlePhoneLogin, verifyPhoneCode, handleError)
+
+    // Helper to render form inputs
+    const renderAdditionalInputs = () => (
+        <div className="space-y-4">
+            <div>
+                <label className="sr-only">Şehir</label>
+                <select
+                    required
+                    className="block w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                >
+                    <option value="">Şehir Seçiniz</option>
+                    <option value="İstanbul">İstanbul</option>
+                    <option value="Ankara">Ankara</option>
+                    <option value="İzmir">İzmir</option>
+                    <option value="Bursa">Bursa</option>
+                    <option value="Antalya">Antalya</option>
+                    <option value="Diğer">Diğer</option>
+                </select>
+            </div>
+            <div className="flex space-x-2">
+                <div className="flex-1">
+                    <label className="sr-only">Yaş</label>
+                    <input
+                        type="number"
+                        required
+                        className="appearance-none block w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        placeholder="Yaşınız"
+                        value={age}
+                        onChange={(e) => setAge(e.target.value)}
+                    />
+                </div>
+                <div className="flex-1">
+                    <label className="sr-only">Cinsiyet</label>
+                    <select
+                        required
+                        className="block w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white"
+                        value={gender}
+                        onChange={(e) => setGender(e.target.value)}
+                    >
+                        <option value="">Cinsiyet</option>
+                        <option value="Kadın">Kadın</option>
+                        <option value="Erkek">Erkek</option>
+                        <option value="Belirtmek İstemiyorum">Belirtmek İstemiyorum</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    );
 
     const handleGoogleLogin = async () => {
         try {
@@ -198,6 +273,9 @@ export default function Login() {
                                     onChange={(e) => setPassword(e.target.value)}
                                 />
                             </div>
+
+                            {/* Additional Inputs for Registration */}
+                            {!isLogin && renderAdditionalInputs()}
                         </div>
 
                         <button

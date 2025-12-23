@@ -6,6 +6,10 @@ import AddToy from './pages/AddToy';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
 import MyRentals from './pages/MyRentals';
+import ChatTopics from './pages/ChatTopics';
+import ToyDetails from './pages/ToyDetails';
+import ChatRoom from './pages/ChatRoom';
+import EditToy from './pages/EditToy';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -21,6 +25,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <Home />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/oyuncak/:id"
+            element={
+              <ProtectedRoute>
+                <ToyDetails />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sohbet"
+            element={
+              <ProtectedRoute>
+                <ChatTopics />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sohbet/:topicId"
+            element={
+              <ProtectedRoute>
+                <ChatRoom />
               </ProtectedRoute>
             }
           />
@@ -45,6 +73,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/oyuncak/:id/duzenle"
+            element={
+              <ProtectedRoute>
+                <EditToy />
               </ProtectedRoute>
             }
           />

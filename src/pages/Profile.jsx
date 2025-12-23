@@ -19,7 +19,11 @@ export default function Profile() {
         displayName: '',
         email: '',
         phoneNumber: '',
-        photoURL: ''
+        photoURL: '',
+        userFriendlyId: '',
+        city: '',
+        age: '',
+        gender: ''
     });
 
     useEffect(() => {
@@ -34,17 +38,44 @@ export default function Profile() {
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
-                setFormData({ ...docSnap.data() });
-            } else {
+                const data = docSnap.data();
+
+                // Generate ID if missing
+                if (!data.userFriendlyId) {
+                    const newId = Math.floor(100000 + Math.random() * 900000).toString();
+                    await setDoc(docRef, { userFriendlyId: newId }, { merge: true });
+                    data.userFriendlyId = newId;
+                }
+
                 setFormData({
+                    displayName: data.displayName || currentUser.displayName || '',
+                    email: data.email || currentUser.email || '',
+                    phoneNumber: data.phoneNumber || currentUser.phoneNumber || '',
+                    photoURL: data.photoURL || currentUser.photoURL || '',
+                    userFriendlyId: data.userFriendlyId || '',
+                    city: data.city || '',
+                    age: data.age || '',
+                    gender: data.gender || ''
+                });
+            } else {
+                // Initialize new profile
+                const newId = Math.floor(100000 + Math.random() * 900000).toString();
+                const initialData = {
                     displayName: currentUser.displayName || '',
                     email: currentUser.email || '',
                     phoneNumber: currentUser.phoneNumber || '',
-                    photoURL: currentUser.photoURL || ''
-                });
+                    photoURL: currentUser.photoURL || '',
+                    userFriendlyId: newId,
+                    city: '',
+                    age: '',
+                    gender: ''
+                };
+                await setDoc(docRef, initialData, { merge: true });
+                setFormData(initialData);
             }
         } catch (error) {
             console.error("Error loading profile:", error);
+            setMessage({ type: 'error', content: 'Profil bilgileri yüklenemedi.' });
         }
     };
 
@@ -56,16 +87,22 @@ export default function Profile() {
         setMessage({ type: '', content: 'Fotoğraf işleniyor ve yükleniyor...' });
 
         try {
-            const compressedFile = await compressImage(file, 200, 0.7); // Smaller max width for profile pics
+            let uploadFile = file;
+            try {
+                uploadFile = await compressImage(file, 400, 0.5);
+            } catch (compError) {
+                console.warn("Compression failed, using original:", compError);
+            }
+
             const storageRef = ref(storage, `profile_images/${currentUser.uid}`);
-            await uploadBytes(storageRef, compressedFile);
+            await uploadBytes(storageRef, uploadFile);
             const url = await getDownloadURL(storageRef);
 
             setFormData(prev => ({ ...prev, photoURL: url }));
             setMessage({ type: 'success', content: 'Fotoğraf yüklendi. Kaydetmeyi unutmayın.' });
         } catch (error) {
             console.error("Upload error:", error);
-            setMessage({ type: 'error', content: 'Fotoğraf yüklenirken hata oluştu.' });
+            setMessage({ type: 'error', content: 'Fotoğraf yüklenirken hata oluştu: ' + error.message });
         } finally {
             setLoading(false);
         }
@@ -76,7 +113,7 @@ export default function Profile() {
             await signOut(auth);
             navigate('/login');
         } catch (error) {
-            console.error("Çıkış yapılırken hata oluştu:", error);
+            console.error("Çıkış hatası:", error);
         }
     };
 
@@ -86,32 +123,25 @@ export default function Profile() {
         setMessage({ type: '', content: '' });
 
         try {
-            // 1. Update Firestore (Primary storage for app profile)
+            // 1. Update Firestore
             await setDoc(doc(db, "users", currentUser.uid), {
-                displayName: formData.displayName,
-                email: formData.email,
-                phoneNumber: formData.phoneNumber,
-                photoURL: formData.photoURL,
+                ...formData,
                 updatedAt: new Date()
             }, { merge: true });
 
-            // 2. Attempt to update Auth Profile (Best effort)
+            // 2. Update Auth Profile
             if (auth.currentUser) {
                 await updateProfile(auth.currentUser, {
                     displayName: formData.displayName,
                     photoURL: formData.photoURL
                 });
 
-                // Update email if changed (Sensitive operation)
                 if (auth.currentUser.email !== formData.email && formData.email) {
                     try {
                         await updateEmail(auth.currentUser, formData.email);
-                    } catch (emailError) {
-                        console.warn("Email update requires recent login:", emailError);
-                        setMessage({
-                            type: 'warning',
-                            content: 'Profil güncellendi fakat email değişikliği için yeniden giriş yapmanız gerekebilir.'
-                        });
+                    } catch (error) {
+                        console.warn("Email update error:", error);
+                        setMessage({ type: 'warning', content: 'Profil güncellendi ama email değiştirilemedi (yeniden giriş gerekli).' });
                         setLoading(false);
                         setIsEditing(false);
                         return;
@@ -123,10 +153,18 @@ export default function Profile() {
             setIsEditing(false);
         } catch (error) {
             console.error("Error updating profile:", error);
-            setMessage({ type: 'error', content: 'Güncelleme sırasında bir hata oluştu.' });
+            setMessage({ type: 'error', content: 'Güncelleme hatası.' });
         } finally {
             setLoading(false);
         }
+    };
+
+    if (!currentUser) return <div className="p-4 text-center">Giriş yapılmalı.</div>;
+
+    // Helper to get initials safely
+    const getInitials = () => {
+        const name = formData.displayName || formData.email || '?';
+        return name.charAt(0).toUpperCase();
     };
 
     return (
@@ -135,26 +173,41 @@ export default function Profile() {
 
             <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
 
-                {/* Profile Header / Avatar */}
+                {/* Header */}
                 <div className="flex flex-col items-center mb-6">
                     <div className="h-24 w-24 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-3xl overflow-hidden shadow-inner mb-3">
                         {formData.photoURL ? (
                             <img src={formData.photoURL} alt="Profil" className="h-full w-full object-cover" />
                         ) : (
-                            <span>{formData.displayName?.charAt(0).toUpperCase() || formData.email?.charAt(0).toUpperCase()}</span>
+                            <span>{getInitials()}</span>
                         )}
                     </div>
+
                     {!isEditing && (
                         <>
                             <h2 className="text-xl font-bold text-gray-900">{formData.displayName || 'İsimsiz Kullanıcı'}</h2>
                             <p className="text-sm text-gray-500">{formData.email}</p>
+                            {(formData.city || formData.age) && (
+                                <p className="text-sm text-gray-400 mt-1">
+                                    {formData.city} {formData.age ? `• ${formData.age} Yaş` : ''}
+                                </p>
+                            )}
+
+                            {formData.userFriendlyId && (
+                                <div className="mt-2 bg-blue-50 px-4 py-1 rounded-full border border-blue-100">
+                                    <p className="text-xs text-blue-600 font-medium">
+                                        Kullanıcı ID: <span className="font-bold text-base select-all">{formData.userFriendlyId}</span>
+                                    </p>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>
 
                 {message.content && (
                     <div className={`p-3 rounded-lg text-sm text-center mb-4 ${message.type === 'success' ? 'bg-green-50 text-green-600' :
-                        message.type === 'warning' ? 'bg-yellow-50 text-yellow-600' : 'bg-red-50 text-red-600'
+                        message.type === 'warning' ? 'bg-yellow-50 text-yellow-600' :
+                            'bg-red-50 text-red-600'
                         }`}>
                         {message.content}
                     </div>
@@ -169,8 +222,124 @@ export default function Profile() {
                                 value={formData.displayName}
                                 onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
                                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                placeholder="Adınız Soyadınız"
                             />
+                        </div>
+
+                        {/* City, Age, Gender */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Şehir</label>
+                            <select
+                                value={formData.city}
+                                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            >
+                                <option value="">Şehir Seçiniz</option>
+                                <option value="Adana">Adana</option>
+                                <option value="Adıyaman">Adıyaman</option>
+                                <option value="Afyonkarahisar">Afyonkarahisar</option>
+                                <option value="Ağrı">Ağrı</option>
+                                <option value="Amasya">Amasya</option>
+                                <option value="Ankara">Ankara</option>
+                                <option value="Antalya">Antalya</option>
+                                <option value="Artvin">Artvin</option>
+                                <option value="Aydın">Aydın</option>
+                                <option value="Balıkesir">Balıkesir</option>
+                                <option value="Bilecik">Bilecik</option>
+                                <option value="Bingöl">Bingöl</option>
+                                <option value="Bitlis">Bitlis</option>
+                                <option value="Bolu">Bolu</option>
+                                <option value="Burdur">Burdur</option>
+                                <option value="Bursa">Bursa</option>
+                                <option value="Çanakkale">Çanakkale</option>
+                                <option value="Çankırı">Çankırı</option>
+                                <option value="Çorum">Çorum</option>
+                                <option value="Denizli">Denizli</option>
+                                <option value="Diyarbakır">Diyarbakır</option>
+                                <option value="Edirne">Edirne</option>
+                                <option value="Elazığ">Elazığ</option>
+                                <option value="Erzincan">Erzincan</option>
+                                <option value="Erzurum">Erzurum</option>
+                                <option value="Eskişehir">Eskişehir</option>
+                                <option value="Gaziantep">Gaziantep</option>
+                                <option value="Giresun">Giresun</option>
+                                <option value="Gümüşhane">Gümüşhane</option>
+                                <option value="Hakkari">Hakkari</option>
+                                <option value="Hatay">Hatay</option>
+                                <option value="Isparta">Isparta</option>
+                                <option value="Mersin">Mersin</option>
+                                <option value="İstanbul">İstanbul</option>
+                                <option value="İzmir">İzmir</option>
+                                <option value="Kars">Kars</option>
+                                <option value="Kastamonu">Kastamonu</option>
+                                <option value="Kayseri">Kayseri</option>
+                                <option value="Kırklareli">Kırklareli</option>
+                                <option value="Kırşehir">Kırşehir</option>
+                                <option value="Kocaeli">Kocaeli</option>
+                                <option value="Konya">Konya</option>
+                                <option value="Kütahya">Kütahya</option>
+                                <option value="Malatya">Malatya</option>
+                                <option value="Manisa">Manisa</option>
+                                <option value="Kahramanmaraş">Kahramanmaraş</option>
+                                <option value="Mardin">Mardin</option>
+                                <option value="Muğla">Muğla</option>
+                                <option value="Muş">Muş</option>
+                                <option value="Nevşehir">Nevşehir</option>
+                                <option value="Niğde">Niğde</option>
+                                <option value="Ordu">Ordu</option>
+                                <option value="Rize">Rize</option>
+                                <option value="Sakarya">Sakarya</option>
+                                <option value="Samsun">Samsun</option>
+                                <option value="Siirt">Siirt</option>
+                                <option value="Sinop">Sinop</option>
+                                <option value="Sivas">Sivas</option>
+                                <option value="Tekirdağ">Tekirdağ</option>
+                                <option value="Tokat">Tokat</option>
+                                <option value="Trabzon">Trabzon</option>
+                                <option value="Tunceli">Tunceli</option>
+                                <option value="Şanlıurfa">Şanlıurfa</option>
+                                <option value="Uşak">Uşak</option>
+                                <option value="Van">Van</option>
+                                <option value="Yozgat">Yozgat</option>
+                                <option value="Zonguldak">Zonguldak</option>
+                                <option value="Aksaray">Aksaray</option>
+                                <option value="Bayburt">Bayburt</option>
+                                <option value="Karaman">Karaman</option>
+                                <option value="Kırıkkale">Kırıkkale</option>
+                                <option value="Batman">Batman</option>
+                                <option value="Şırnak">Şırnak</option>
+                                <option value="Bartın">Bartın</option>
+                                <option value="Ardahan">Ardahan</option>
+                                <option value="Iğdır">Iğdır</option>
+                                <option value="Yalova">Yalova</option>
+                                <option value="Karabük">Karabük</option>
+                                <option value="Kilis">Kilis</option>
+                                <option value="Osmaniye">Osmaniye</option>
+                                <option value="Düzce">Düzce</option>
+                            </select>
+                        </div>
+                        <div className="flex space-x-3">
+                            <div className="flex-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Yaş</label>
+                                <input
+                                    type="number"
+                                    value={formData.age}
+                                    onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Cinsiyet</label>
+                                <select
+                                    value={formData.gender}
+                                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                >
+                                    <option value="">Seçiniz</option>
+                                    <option value="Kadın">Kadın</option>
+                                    <option value="Erkek">Erkek</option>
+                                    <option value="Belirtmek İstemiyorum">Belirtmek İstemiyorum</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div className="flex flex-col space-y-2">
@@ -183,16 +352,9 @@ export default function Profile() {
                                     type="file"
                                     accept="image/*"
                                     onChange={handleFileChange}
-                                    className="block w-full text-sm text-slate-500
-                                    file:mr-4 file:py-2 file:px-4
-                                    file:rounded-full file:border-0
-                                    file:text-sm file:font-semibold
-                                    file:bg-blue-50 file:text-blue-700
-                                    hover:file:bg-blue-100
-                                    "
+                                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                                 />
                             </div>
-                            <p className="text-xs text-gray-500">JPG, PNG formatında yükleyeyebilirsiniz.</p>
                         </div>
 
                         <div>
@@ -212,7 +374,6 @@ export default function Profile() {
                                 value={formData.phoneNumber}
                                 onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
                                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                placeholder="05XX XXX XX XX"
                             />
                         </div>
 
@@ -237,10 +398,21 @@ export default function Profile() {
                     <div className="space-y-4">
                         <div className="space-y-3">
                             <div className="flex justify-between items-center py-2 border-b border-gray-50">
+                                <span className="text-gray-500">Şehir</span>
+                                <span className="font-medium">{formData.city || '-'}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-2 border-b border-gray-50">
+                                <span className="text-gray-500">Yaş</span>
+                                <span className="font-medium">{formData.age || '-'}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-2 border-b border-gray-50">
+                                <span className="text-gray-500">Cinsiyet</span>
+                                <span className="font-medium">{formData.gender || '-'}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-2 border-b border-gray-50">
                                 <span className="text-gray-500">Telefon</span>
                                 <span className="font-medium">{formData.phoneNumber || '-'}</span>
                             </div>
-                            {/* Diğer salt okunur bilgiler buraya eklenebilir */}
                         </div>
 
                         <button
