@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, orderBy, onSnapshot, where, doc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, where, doc, getDoc, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 
@@ -8,6 +8,11 @@ export default function ChatTopics() {
     const { currentUser } = useAuth();
     const [rooms, setRooms] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Friend adding state
+    const [friendInput, setFriendInput] = useState('');
+    const [addFriendLoading, setAddFriendLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
 
     useEffect(() => {
         if (!currentUser) return;
@@ -53,13 +58,81 @@ export default function ChatTopics() {
         return () => unsubscribe();
     }, [currentUser]);
 
+    const handleAddFriend = async () => {
+        if (!friendInput.trim()) return;
+        setAddFriendLoading(true);
+        setErrorMsg('');
+
+        try {
+            // Find user by numerical ID
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("userFriendlyId", "==", friendInput.trim()));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                setErrorMsg('❌ Kullanıcı bulunamadı.');
+                return;
+            }
+
+            const friendDoc = querySnapshot.docs[0];
+            const friendUid = friendDoc.id;
+            const friendData = friendDoc.data();
+
+            if (friendUid === currentUser.uid) {
+                setErrorMsg('⚠️ Kendinizi ekleyemezsiniz.');
+                return;
+            }
+
+            // Create or go to room
+            const roomId = [currentUser.uid, friendUid].sort().join("_");
+            const roomRef = doc(db, "rooms", roomId);
+
+            await setDoc(roomRef, {
+                participants: [currentUser.uid, friendUid],
+                updatedAt: serverTimestamp(),
+                lastMessage: "Sohbet başlatıldı.",
+                toyName: "Direkt Mesaj"
+            }, { merge: true });
+
+            setFriendInput('');
+            alert(`✅ ${friendData.displayName || 'Kullanıcı'} ile sohbet başlatıldı!`);
+        } catch (error) {
+            console.error("Add error:", error);
+            setErrorMsg('❌ Bir hata oluştu.');
+        } finally {
+            setAddFriendLoading(false);
+        }
+    };
+
     if (loading) {
-        return <div className="p-8 text-center text-gray-500">Sohbetler yükleniyor...</div>;
+        return <div className="p-8 text-center text-gray-500 font-sans">Sohbetler yükleniyor...</div>;
     }
 
     return (
-        <div className="pb-20 pt-4 px-4 bg-gray-50 min-h-screen">
+        <div className="pb-20 pt-4 px-4 bg-gray-50 min-h-screen font-sans">
             <h1 className="text-2xl font-black text-gray-900 mb-6">Sohbetlerim</h1>
+
+            {/* Friend Search Section */}
+            <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-6">
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 pl-1">ID ile Kişi Ekle</h3>
+                <div className="flex gap-2">
+                    <input
+                        type="text"
+                        placeholder="Örn: 123456"
+                        className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 font-bold"
+                        value={friendInput}
+                        onChange={(e) => setFriendInput(e.target.value)}
+                    />
+                    <button
+                        onClick={handleAddFriend}
+                        disabled={addFriendLoading || !friendInput.trim()}
+                        className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-sm font-black hover:bg-blue-700 disabled:opacity-50 transition-all shadow-lg shadow-blue-100"
+                    >
+                        {addFriendLoading ? '...' : 'Bul'}
+                    </button>
+                </div>
+                {errorMsg && <p className="text-xs mt-3 font-bold text-red-500 pl-1">{errorMsg}</p>}
+            </div>
 
             {rooms.length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-3xl shadow-sm border border-gray-100 px-6">
