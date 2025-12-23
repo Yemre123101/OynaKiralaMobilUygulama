@@ -1,26 +1,94 @@
-import { useState, useEffect } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "./firebase";
-import Home from "./pages/Home";
-import Login from "./pages/Login";
+import { Routes, Route } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
+import Navbar from './components/Navbar';
+import Home from './pages/Home';
+import AddToy from './pages/AddToy';
+import Profile from './pages/Profile';
+import Login from './pages/Login';
+import MyRentals from './pages/MyRentals';
+import ChatTopics from './pages/ChatTopics';
+import ToyDetails from './pages/ToyDetails';
+import ChatRoom from './pages/ChatRoom';
+import EditToy from './pages/EditToy';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
-  const [userId, setUserId] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { currentUser } = useAuth();
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) setUserId(user.uid);
-      else setUserId(null);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  if (loading) return <p>Yükleniyor...</p>;
-
-  return userId ? <Home userId={userId} /> : <Login setUserId={setUserId} />;
+  return (
+    <div className="bg-gray-50 min-h-screen text-gray-900 font-sans">
+      <div className="max-w-md mx-auto bg-white min-h-screen shadow-2xl relative">
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/oyuncak/:id"
+            element={
+              <ProtectedRoute>
+                <ToyDetails />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sohbet"
+            element={
+              <ProtectedRoute>
+                <ChatTopics />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sohbet/:topicId"
+            element={
+              <ProtectedRoute>
+                <ChatRoom />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ekle"
+            element={
+              <ProtectedRoute>
+                <AddToy />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/kiralamalarim"
+            element={
+              <ProtectedRoute>
+                <MyRentals />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profil"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/oyuncak/:id/duzenle"
+            element={
+              <ProtectedRoute>
+                <EditToy />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+        {currentUser && <Navbar />}
+      </div>
+    </div>
+  );
 }
 
 export default App;
