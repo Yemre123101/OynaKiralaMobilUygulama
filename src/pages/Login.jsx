@@ -5,6 +5,8 @@ import {
     createUserWithEmailAndPassword,
     GoogleAuthProvider,
     signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
     RecaptchaVerifier,
     signInWithPhoneNumber
 } from 'firebase/auth';
@@ -31,7 +33,41 @@ export default function Login() {
     const [confirmationResult, setConfirmationResult] = useState(null);
 
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+
+    // Handle Google Redirect Result
+    useEffect(() => {
+        const handleRedirect = async () => {
+            try {
+                const result = await getRedirectResult(auth);
+                if (result) {
+                    const user = result.user;
+                    const userRef = doc(db, "users", user.uid);
+                    const userSnap = await getDoc(userRef);
+
+                    if (!userSnap.exists()) {
+                        await setDoc(userRef, {
+                            email: user.email,
+                            displayName: user.displayName || user.email.split('@')[0],
+                            photoURL: user.photoURL || '',
+                            city: '',
+                            age: '',
+                            gender: '',
+                            iban: '',
+                            createdAt: serverTimestamp(),
+                            userFriendlyId: Math.floor(100000 + Math.random() * 900000).toString()
+                        });
+                    }
+                    navigate('/');
+                }
+            } catch (err) {
+                console.error("Redirect Error:", err);
+                handleError(err);
+            }
+        };
+        handleRedirect();
+    }, [navigate]);
 
     const turkeyCities = [
         "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Amasya", "Ankara", "Antalya", "Artvin", "Aydın", "Balıkesir", "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli", "Diyarbakır", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane", "Hakkari", "Hatay", "Isparta", "Mersin", "İstanbul", "İzmir", "Kars", "Kastamonu", "Kayseri", "Kırklareli", "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Kahramanmaraş", "Mardin", "Muğla", "Muş", "Nevşehir", "Niğde", "Ordu", "Rize", "Sakarya", "Samsun", "Siirt", "Sinop", "Sivas", "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Şanlıurfa", "Uşak", "Van", "Yozgat", "Zonguldak", "Aksaray", "Bayburt", "Karaman", "Kırıkkale", "Batman", "Şırnak", "Bartın", "Ardahan", "Iğdır", "Yalova", "Karabük", "Kilis", "Osmaniye", "Düzce"
@@ -77,29 +113,8 @@ export default function Login() {
             const provider = new GoogleAuthProvider();
             provider.setCustomParameters({ prompt: 'select_account' });
 
-            const result = await signInWithPopup(auth, provider);
-            const user = result.user;
-
-            // Firestore'da kullanıcı dokümanı var mı kontrol et
-            const userRef = doc(db, "users", user.uid);
-            const userSnap = await getDoc(userRef);
-
-            if (!userSnap.exists()) {
-                // Doküman yoksa oluştur
-                await setDoc(userRef, {
-                    email: user.email,
-                    displayName: user.displayName || user.email.split('@')[0],
-                    photoURL: user.photoURL || '',
-                    city: '', // Google girişinde şehir yok, kullanıcı profilden doldurmalı
-                    age: '',
-                    gender: '',
-                    iban: '',
-                    createdAt: serverTimestamp(),
-                    userFriendlyId: Math.floor(100000 + Math.random() * 900000).toString()
-                });
-            }
-
-            navigate('/');
+            // Redirect is more reliable on mobile and bypasses COOP issues
+            await signInWithRedirect(auth, provider);
         } catch (err) {
             handleError(err);
         }
