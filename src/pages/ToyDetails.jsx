@@ -13,7 +13,9 @@ export default function ToyDetails() {
     const [loading, setLoading] = useState(true);
     const [showRentalModal, setShowRentalModal] = useState(false);
     const [rentalDays, setRentalDays] = useState(7);
-    const [paymentStep, setPaymentStep] = useState(1); // 1: Select Duration, 2: EFT Info, 3: Success
+    const [paymentStep, setPaymentStep] = useState(1); // 1: Duration, 2: EFT Info, 3: Renter Info, 4: Success
+    const [senderName, setSenderName] = useState("");
+    const [senderBank, setSenderBank] = useState("");
 
     useEffect(() => {
         const fetchToyAndOwner = async () => {
@@ -88,7 +90,9 @@ export default function ToyDetails() {
                 ownerId: toy.ownerId,
                 days: rentalDays,
                 totalPrice: toy.price * rentalDays,
-                status: 'waiting_approval', // EFT is manual, so owner needs to approve
+                senderName,
+                senderBank,
+                status: 'waiting_approval',
                 createdAt: serverTimestamp(),
                 paymentMethod: 'eft'
             });
@@ -100,7 +104,7 @@ export default function ToyDetails() {
                 rentedAt: serverTimestamp()
             });
 
-            setPaymentStep(3);
+            setPaymentStep(4);
         } catch (error) {
             console.error("Error renting toy:", error);
             alert("Kiralama sırasında bir hata oluştu.");
@@ -329,8 +333,57 @@ export default function ToyDetails() {
                                         Geri
                                     </button>
                                     <button
+                                        onClick={() => setPaymentStep(3)}
+                                        className="flex-[2] bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all"
+                                    >
+                                        Devam Et
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {paymentStep === 3 && (
+                            <div className="space-y-6">
+                                <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                                    <h4 className="text-blue-800 font-black text-sm mb-1">✍️ Gönderen Bilgileri</h4>
+                                    <p className="text-xs text-blue-700 font-medium">
+                                        Sahibinin ödemenizi hızlıca onaylayabilmesi için lütfen EFT'yi yaptığınız isim ve bankayı giriniz.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-1">Adınız Soyadınız (EFT'deki İsim)</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Örn: Mehmet Yılmaz"
+                                            value={senderName}
+                                            onChange={(e) => setSenderName(e.target.value)}
+                                            className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-1">Gönderilen Banka</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Örn: Garanti BBVA"
+                                            value={senderBank}
+                                            onChange={(e) => setSenderBank(e.target.value)}
+                                            className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setPaymentStep(2)}
+                                        className="flex-1 py-4 text-gray-500 font-black text-sm hover:bg-gray-50 rounded-2xl transition-all"
+                                    >
+                                        Geri
+                                    </button>
+                                    <button
                                         onClick={confirmPayment}
-                                        disabled={loading}
+                                        disabled={loading || !senderName || !senderBank}
                                         className="flex-[2] bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all disabled:bg-gray-400"
                                     >
                                         {loading ? 'İşleniyor...' : 'Ödemeyi Yaptım'}
@@ -339,7 +392,7 @@ export default function ToyDetails() {
                             </div>
                         )}
 
-                        {paymentStep === 3 && (
+                        {paymentStep === 4 && (
                             <div className="py-8 text-center space-y-6">
                                 <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-4xl animate-bounce">
                                     ✓
