@@ -31,10 +31,22 @@ export default function AddToy() {
   };
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImage(file);
-      setPreview(URL.createObjectURL(file));
+    try {
+      const file = e.target.files[0];
+      if (file) {
+        if (file.size > 10 * 1024 * 1024) {
+          alert("Dosya boyutu çok büyük (Maksimum 10MB)");
+          return;
+        }
+        setImage(file);
+        const objectUrl = URL.createObjectURL(file);
+        setPreview(objectUrl);
+        // Clean up memory
+        return () => URL.revokeObjectURL(objectUrl);
+      }
+    } catch (err) {
+      console.error("Görsel seçme hatası:", err);
+      alert("Görsel seçilirken bir hata oluştu.");
     }
   };
 
@@ -52,14 +64,23 @@ export default function AddToy() {
         let uploadFile = image;
         try {
           // Compress the image before uploading (600px width, 0.5 quality for speed)
+          console.log("Görsel sıkıştırılıyor...");
           uploadFile = await compressImage(image, 600, 0.5);
         } catch (compressionError) {
-          console.warn("Image compression failed, uploading original:", compressionError);
+          console.warn("Sıkıştırma başarısız, orijinal dosya yükleniyor:", compressionError);
         }
 
+        console.log("Firebase Storage'a yükleniyor...");
         const storageRef = ref(storage, `toy_images/${currentUser.uid}_${Date.now()}`);
-        await uploadBytes(storageRef, uploadFile);
-        imageUrl = await getDownloadURL(storageRef);
+
+        try {
+          await uploadBytes(storageRef, uploadFile);
+          imageUrl = await getDownloadURL(storageRef);
+          console.log("Yükleme başarılı, URL:", imageUrl);
+        } catch (storageError) {
+          console.error("Storage Hatası:", storageError);
+          throw new Error(`Fotoğraf yüklenemedi: ${storageError.message}. Lütfen Firebase Storage ayarlarınızı ve kurallarınızı kontrol edin.`);
+        }
       }
 
       await addDoc(collection(db, "toys"), {
@@ -90,8 +111,8 @@ export default function AddToy() {
       setImage(null);
       setPreview(null);
     } catch (error) {
-      console.error(error);
-      alert("Bir hata oluştu");
+      console.error("Hata detayı:", error);
+      alert(error.message || "Bir hata oluştu");
     } finally {
       setLoading(false);
     }
