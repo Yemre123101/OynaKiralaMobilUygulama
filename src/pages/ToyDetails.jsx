@@ -13,7 +13,9 @@ export default function ToyDetails() {
     const [loading, setLoading] = useState(true);
     const [showRentalModal, setShowRentalModal] = useState(false);
     const [rentalDays, setRentalDays] = useState(7);
-    const [paymentStep, setPaymentStep] = useState(1); // 1: Duration, 2: EFT Info, 3: Renter Info, 4: Success
+    const [paymentStep, setPaymentStep] = useState(1); // 1: Duration, 2: Method, 3: Details, 4: Renter Info, 5: Success
+    const [paymentMode, setPaymentMode] = useState('card'); // 'card' or 'eft'
+    const [cardData, setCardData] = useState({ number: '', expiry: '', cvc: '', name: '' });
     const [senderName, setSenderName] = useState("");
     const [senderBank, setSenderBank] = useState("");
 
@@ -92,9 +94,9 @@ export default function ToyDetails() {
                 totalPrice: toy.price * rentalDays,
                 senderName,
                 senderBank,
-                status: 'waiting_approval',
-                createdAt: serverTimestamp(),
-                paymentMethod: 'eft'
+                paymentMethod: paymentMode,
+                cardLastFour: paymentMode === 'card' ? cardData.number.slice(-4) : null,
+                createdAt: serverTimestamp()
             });
 
             // Update toy availability
@@ -104,7 +106,7 @@ export default function ToyDetails() {
                 rentedAt: serverTimestamp()
             });
 
-            setPaymentStep(4);
+            setPaymentStep(5);
         } catch (error) {
             console.error("Error renting toy:", error);
             alert("Kiralama sırasında bir hata oluştu.");
@@ -291,69 +293,169 @@ export default function ToyDetails() {
                                     onClick={() => setPaymentStep(2)}
                                     className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all"
                                 >
-                                    Ödemeye Geç
+                                    Ödeme Yöntemi Seç
                                 </button>
                             </div>
                         )}
 
                         {paymentStep === 2 && (
+                            <div className="space-y-4">
+                                <p className="text-sm font-bold text-gray-500 mb-2">Ödeme Yöntemi</p>
+                                <button
+                                    onClick={() => setPaymentMode('card')}
+                                    className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${paymentMode === 'card' ? 'border-blue-600 bg-blue-50' : 'border-gray-100'}`}
+                                >
+                                    <div className="flex items-center">
+                                        <span className="text-2xl mr-3">💳</span>
+                                        <div className="text-left">
+                                            <p className="font-bold text-gray-900">Kredi / Banka Kartı</p>
+                                            <p className="text-xs text-gray-500 font-medium">Güvenli online ödeme</p>
+                                        </div>
+                                    </div>
+                                    {paymentMode === 'card' && <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white text-[10px]">✓</div>}
+                                </button>
+
+                                <button
+                                    onClick={() => setPaymentMode('eft')}
+                                    className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${paymentMode === 'eft' ? 'border-blue-600 bg-blue-50' : 'border-gray-100'}`}
+                                >
+                                    <div className="flex items-center">
+                                        <span className="text-2xl mr-3">🏦</span>
+                                        <div className="text-left">
+                                            <p className="font-bold text-gray-900">EFT / Havale</p>
+                                            <p className="text-xs text-gray-500 font-medium">Hesaba doğrudan transfer</p>
+                                        </div>
+                                    </div>
+                                    {paymentMode === 'eft' && <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white text-[10px]">✓</div>}
+                                </button>
+
+                                <div className="pt-4 flex gap-3">
+                                    <button onClick={() => setPaymentStep(1)} className="flex-1 py-4 text-gray-500 font-bold">Geri</button>
+                                    <button onClick={() => setPaymentStep(3)} className="flex-[2] bg-blue-600 text-white py-4 rounded-2xl font-black">Devam Et</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {paymentStep === 3 && paymentMode === 'eft' && (
                             <div className="space-y-6">
                                 <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100">
                                     <h4 className="text-orange-800 font-black text-sm mb-1 flex items-center">
-                                        <span className="mr-2">💳</span> EFT/Havale ile Ödeme
+                                        <span className="mr-2">🏦</span> EFT/Havale Bilgileri
                                     </h4>
                                     <p className="text-xs text-orange-700 leading-relaxed font-medium">
-                                        Lütfen aşağıdaki IBAN numarasına <b>₺{totalPrice}</b> tutarını gönderin ve ardından "Ödemeyi Yaptım" butonuna basın.
+                                        Lütfen tutarı gönderdikten sonra bilgileri doldurmak için "Devam Et" butonuna basın.
                                     </p>
                                 </div>
 
                                 <div className="space-y-4">
-                                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 select-all cursor-pointer group active:bg-gray-100 transition-colors">
+                                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Alıcı Adı Soyadı</p>
-                                        <p className="font-black text-gray-900 group-active:text-blue-600">{owner?.displayName || 'Oyuncak Sahibi'}</p>
+                                        <p className="font-black text-gray-900">{owner?.displayName || 'Oyuncak Sahibi'}</p>
                                     </div>
-                                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 select-all cursor-pointer group active:bg-gray-100 transition-colors">
+                                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">IBAN Numarası</p>
-                                        <p className="font-black text-gray-900 break-all group-active:text-blue-600">
-                                            {owner?.iban || 'TR00 0000 0000 0000 0000 0000 00'}
-                                        </p>
-                                        {!owner?.iban && <p className="text-[9px] text-red-500 font-bold mt-1">⚠️ Sahibi henüz IBAN girmemiş, lütfen sohbetten isteyin.</p>}
-                                    </div>
-                                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 select-all cursor-pointer group active:bg-gray-100 transition-colors">
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Açıklama (Zorunlu)</p>
-                                        <p className="font-black text-gray-900 group-active:text-blue-600">{toy.id.substring(0, 8)} - Kiralama</p>
+                                        <p className="font-black text-gray-900 break-all">{owner?.iban || 'TR00 0000 0000 0000 0000 0000 00'}</p>
                                     </div>
                                 </div>
 
                                 <div className="flex gap-3">
+                                    <button onClick={() => setPaymentStep(2)} className="flex-1 py-4 text-gray-500 font-bold">Geri</button>
+                                    <button onClick={() => setPaymentStep(4)} className="flex-[2] bg-blue-600 text-white py-4 rounded-2xl font-black">Devam Et</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {paymentStep === 3 && paymentMode === 'card' && (
+                            <div className="space-y-6">
+                                {/* Card Graphic */}
+                                <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-6 rounded-2xl text-white shadow-xl relative overflow-hidden h-44">
+                                    <div className="absolute top-0 right-0 p-4 opacity-20 text-6xl rotate-12">💳</div>
+                                    <div className="relative z-10 h-full flex flex-col justify-between">
+                                        <div className="flex justify-between items-start">
+                                            <div className="w-10 h-8 bg-yellow-400/50 rounded-md"></div>
+                                            <p className="font-bold text-sm italic">PAY Card</p>
+                                        </div>
+                                        <p className="text-lg font-mono tracking-widest my-2">
+                                            {cardData.number ? cardData.number.replace(/(.{4})/g, '$1 ') : '**** **** **** ****'}
+                                        </p>
+                                        <div className="flex justify-between text-[10px] uppercase font-bold text-blue-100">
+                                            <div>
+                                                <p className="opacity-60 mb-0.5">Kart Sahibi</p>
+                                                <p>{cardData.name || 'İSİM SOYİSİM'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="opacity-60 mb-0.5">Son Kullanma</p>
+                                                <p>{cardData.expiry || 'MM/YY'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <input
+                                        type="text"
+                                        placeholder="Kart Üzerindeki İsim"
+                                        value={cardData.name}
+                                        onChange={(e) => setCardData({ ...cardData, name: e.target.value.toUpperCase() })}
+                                        className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Kart Numarası"
+                                        maxLength="16"
+                                        value={cardData.number}
+                                        onChange={(e) => setCardData({ ...cardData, number: e.target.value.replace(/\D/g, '') })}
+                                        className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold font-mono"
+                                    />
+                                    <div className="flex gap-3">
+                                        <input
+                                            type="text"
+                                            placeholder="AA/YY"
+                                            maxLength="5"
+                                            value={cardData.expiry}
+                                            onChange={(e) => {
+                                                let val = e.target.value.replace(/\D/g, '');
+                                                if (val.length > 2) val = val.slice(0, 2) + '/' + val.slice(2, 4);
+                                                setCardData({ ...cardData, expiry: val });
+                                            }}
+                                            className="flex-1 p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold"
+                                        />
+                                        <input
+                                            type="password"
+                                            placeholder="CVC"
+                                            maxLength="3"
+                                            value={cardData.cvc}
+                                            onChange={(e) => setCardData({ ...cardData, cvc: e.target.value.replace(/\D/g, '') })}
+                                            className="flex-1 p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button onClick={() => setPaymentStep(2)} className="flex-1 py-4 text-gray-500 font-bold">Geri</button>
                                     <button
-                                        onClick={() => setPaymentStep(1)}
-                                        className="flex-1 py-4 text-gray-500 font-black text-sm hover:bg-gray-50 rounded-2xl transition-all"
+                                        disabled={cardData.number.length < 16 || !cardData.name || cardData.expiry.length < 5 || cardData.cvc.length < 3}
+                                        onClick={confirmPayment}
+                                        className="flex-[2] bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg disabled:bg-gray-300"
                                     >
-                                        Geri
-                                    </button>
-                                    <button
-                                        onClick={() => setPaymentStep(3)}
-                                        className="flex-[2] bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all"
-                                    >
-                                        Devam Et
+                                        {loading ? 'Ödeniyor...' : `₺${totalPrice} Öde`}
                                     </button>
                                 </div>
                             </div>
                         )}
 
-                        {paymentStep === 3 && (
+                        {paymentStep === 4 && (
                             <div className="space-y-6">
                                 <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                                    <h4 className="text-blue-800 font-black text-sm mb-1">✍️ Gönderen Bilgileri</h4>
+                                    <h4 className="text-blue-800 font-black text-sm mb-1">✍️ Son Adım</h4>
                                     <p className="text-xs text-blue-700 font-medium">
-                                        Sahibinin ödemenizi hızlıca onaylayabilmesi için lütfen EFT'yi yaptığınız isim ve bankayı giriniz.
+                                        Kiralama işlemini başlatmak için adınızı ve varsa bankanızı onaylayın.
                                     </p>
                                 </div>
 
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-1">Adınız Soyadınız (EFT'deki İsim)</label>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-1">Adınız Soyadınız</label>
                                         <input
                                             type="text"
                                             placeholder="Örn: Mehmet Yılmaz"
@@ -363,10 +465,10 @@ export default function ToyDetails() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-1">Gönderilen Banka</label>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-1">Banka (EFT ise)</label>
                                         <input
                                             type="text"
-                                            placeholder="Örn: Garanti BBVA"
+                                            placeholder="Kartla ödediyseniz boş bırakabilirsiniz"
                                             value={senderBank}
                                             onChange={(e) => setSenderBank(e.target.value)}
                                             className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold"
@@ -375,24 +477,19 @@ export default function ToyDetails() {
                                 </div>
 
                                 <div className="flex gap-3">
-                                    <button
-                                        onClick={() => setPaymentStep(2)}
-                                        className="flex-1 py-4 text-gray-500 font-black text-sm hover:bg-gray-50 rounded-2xl transition-all"
-                                    >
-                                        Geri
-                                    </button>
+                                    <button onClick={() => setPaymentStep(3)} className="flex-1 py-4 text-gray-500 font-black text-sm hover:bg-gray-50 rounded-2xl transition-all">Geri</button>
                                     <button
                                         onClick={confirmPayment}
-                                        disabled={loading || !senderName || !senderBank}
+                                        disabled={loading || !senderName}
                                         className="flex-[2] bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all disabled:bg-gray-400"
                                     >
-                                        {loading ? 'İşleniyor...' : 'Ödemeyi Yaptım'}
+                                        {loading ? 'İşleniyor...' : 'Ödemeyi Onayla'}
                                     </button>
                                 </div>
                             </div>
                         )}
 
-                        {paymentStep === 4 && (
+                        {paymentStep === 5 && (
                             <div className="py-8 text-center space-y-6">
                                 <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-4xl animate-bounce">
                                     ✓
