@@ -13,7 +13,8 @@ export default function Home() {
   const [userCity, setUserCity] = useState(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filters, setFilters] = useState({
-    ageRange: "",
+    minAge: 0,
+    maxAge: 15,
     gender: "",
     minPrice: "",
     maxPrice: "",
@@ -81,8 +82,21 @@ export default function Home() {
   })();
 
   const applyFilters = (toy) => {
+    // Search filter
     const matchesSearch = toy.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesAge = filters.ageRange ? toy.ageRange?.includes(filters.ageRange) : true;
+
+    // Age filter logic: toy.ageRange is "X-Y", filters are minAge and maxAge
+    let matchesAge = true;
+    if (toy.ageRange) {
+      const toyAgeParts = toy.ageRange.split('-').map(p => parseInt(p.trim()));
+      const toyMin = toyAgeParts[0];
+      const toyMax = toyAgeParts.length > 1 ? toyAgeParts[1] : toyMin;
+
+      // Intersection logic: [toyMin, toyMax] overlaps with [filters.minAge, filters.maxAge]
+      // Which means toyMin <= filters.maxAge AND toyMax >= filters.minAge
+      matchesAge = (toyMin <= filters.maxAge && toyMax >= filters.minAge);
+    }
+
     const matchesGender = filters.gender ? toy.gender === filters.gender : true;
     const matchesMinPrice = filters.minPrice ? parseFloat(toy.price) >= parseFloat(filters.minPrice) : true;
     const matchesMaxPrice = filters.maxPrice ? parseFloat(toy.price) <= parseFloat(filters.maxPrice) : true;
@@ -193,19 +207,31 @@ export default function Home() {
             <div className="space-y-5">
               {/* Yaş Aralığı */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Yaş Aralığı</label>
-                <select
-                  value={filters.ageRange}
-                  onChange={(e) => setFilters({ ...filters, ageRange: e.target.value })}
-                  className="w-full border border-gray-200 p-3 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="">Hepsi</option>
-                  <option value="0-3">0-3 Yaş</option>
-                  <option value="3-6">3-6 Yaş</option>
-                  <option value="6-9">6-9 Yaş</option>
-                  <option value="9-12">9-12 Yaş</option>
-                  <option value="12+">12+ Yaş</option>
-                </select>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Yaş Aralığı ({filters.minAge} - {filters.maxAge} Yaş)</label>
+                <div className="space-y-4 px-2">
+                  <div className="relative h-2 bg-gray-100 rounded-full">
+                    <input
+                      type="range"
+                      min="0"
+                      max="15"
+                      value={filters.minAge}
+                      onChange={(e) => setFilters({ ...filters, minAge: Math.min(parseInt(e.target.value), filters.maxAge) })}
+                      className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer accent-blue-600 z-20 pointer-events-auto"
+                    />
+                    <input
+                      type="range"
+                      min="0"
+                      max="15"
+                      value={filters.maxAge}
+                      onChange={(e) => setFilters({ ...filters, maxAge: Math.max(parseInt(e.target.value), filters.minAge) })}
+                      className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer accent-blue-600 z-10 pointer-events-auto"
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] font-black text-gray-400 uppercase tracking-widest pt-1">
+                    <span>0 Yaş</span>
+                    <span>15+ Yaş</span>
+                  </div>
+                </div>
               </div>
 
               {/* Cinsiyet */}
@@ -278,7 +304,7 @@ export default function Home() {
 
               <div className="flex gap-3 pt-4">
                 <button
-                  onClick={() => setFilters({ ageRange: "", gender: "", minPrice: "", maxPrice: "", city: "", category: "" })}
+                  onClick={() => setFilters({ minAge: 0, maxAge: 15, gender: "", minPrice: "", maxPrice: "", city: "", category: "" })}
                   className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600 font-bold hover:bg-gray-50 transition-all"
                 >
                   Temizle
