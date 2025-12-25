@@ -8,7 +8,7 @@ import {
     RecaptchaVerifier,
     signInWithPhoneNumber
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 export default function Login() {
@@ -72,12 +72,33 @@ export default function Login() {
     };
 
     const handleGoogleLogin = async () => {
+        setError('');
         try {
             const provider = new GoogleAuthProvider();
+            provider.setCustomParameters({ prompt: 'select_account' });
+
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
 
-            // Check if user exists in Firestore, if not we need profile choice (simplified here as redirect to profile if missing)
+            // Firestore'da kullanıcı dokümanı var mı kontrol et
+            const userRef = doc(db, "users", user.uid);
+            const userSnap = await getDoc(userRef);
+
+            if (!userSnap.exists()) {
+                // Doküman yoksa oluştur
+                await setDoc(userRef, {
+                    email: user.email,
+                    displayName: user.displayName || user.email.split('@')[0],
+                    photoURL: user.photoURL || '',
+                    city: '', // Google girişinde şehir yok, kullanıcı profilden doldurmalı
+                    age: '',
+                    gender: '',
+                    iban: '',
+                    createdAt: serverTimestamp(),
+                    userFriendlyId: Math.floor(100000 + Math.random() * 900000).toString()
+                });
+            }
+
             navigate('/');
         } catch (err) {
             handleError(err);
@@ -152,8 +173,14 @@ export default function Login() {
             case 'auth/weak-password':
                 errorMessage = "Şifre çok zayıf.";
                 break;
+            case 'auth/popup-closed-by-user':
+                errorMessage = "Giriş penceresi kapatıldı.";
+                break;
+            case 'auth/cancelled-popup-request':
+                errorMessage = "Giriş işlemi iptal edildi.";
+                break;
             default:
-                errorMessage = err.message;
+                errorMessage = `Hata (${err.code}): ${err.message}`;
         }
         setError(errorMessage);
     };
