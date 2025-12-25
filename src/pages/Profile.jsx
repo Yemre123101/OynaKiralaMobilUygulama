@@ -23,7 +23,8 @@ export default function Profile() {
         userFriendlyId: '',
         city: '',
         age: '',
-        gender: ''
+        gender: '',
+        iban: ''
     });
 
     useEffect(() => {
@@ -55,7 +56,8 @@ export default function Profile() {
                     userFriendlyId: data.userFriendlyId || '',
                     city: data.city || '',
                     age: data.age || '',
-                    gender: data.gender || ''
+                    gender: data.gender || '',
+                    iban: data.iban || ''
                 });
             } else {
                 // Initialize new profile
@@ -68,7 +70,8 @@ export default function Profile() {
                     userFriendlyId: newId,
                     city: '',
                     age: '',
-                    gender: ''
+                    gender: '',
+                    iban: ''
                 };
                 await setDoc(docRef, initialData, { merge: true });
                 setFormData(initialData);
@@ -377,6 +380,17 @@ export default function Profile() {
                             />
                         </div>
 
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">IBAN (EFT için)</label>
+                            <input
+                                type="text"
+                                placeholder="TR00 0000 0000 0000 0000 0000 00"
+                                value={formData.iban}
+                                onChange={(e) => setFormData({ ...formData, iban: e.target.value })}
+                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            />
+                        </div>
+
                         <div className="flex space-x-3 pt-2">
                             <button
                                 type="button"
@@ -412,6 +426,10 @@ export default function Profile() {
                             <div className="flex justify-between items-center py-2 border-b border-gray-50">
                                 <span className="text-gray-500">Telefon</span>
                                 <span className="font-medium">{formData.phoneNumber || '-'}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-2 border-b border-gray-50">
+                                <span className="text-gray-500">IBAN</span>
+                                <span className="font-medium text-xs">{formData.iban || '-'}</span>
                             </div>
                         </div>
 
