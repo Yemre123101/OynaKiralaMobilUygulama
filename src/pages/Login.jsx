@@ -12,8 +12,10 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
+    const { loginAsGuest } = useAuth();
     const [isLogin, setIsLogin] = useState(true);
     const [loginMethod, setLoginMethod] = useState('email'); // 'email' or 'phone'
 
@@ -363,10 +365,20 @@ export default function Login() {
 
                 <button
                     onClick={handleGoogleLogin}
-                    className="w-full flex items-center justify-center px-4 py-3.5 border-2 border-gray-100 rounded-2xl font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-[0.98]"
+                    className="w-full flex items-center justify-center px-4 py-3.5 border-2 border-gray-100 rounded-2xl font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-[0.98] mb-3"
                 >
                     <img className="h-5 w-5 mr-3" src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" />
                     Google ile devam et
+                </button>
+
+                <button
+                    onClick={() => {
+                        loginAsGuest();
+                        navigate('/');
+                    }}
+                    className="w-full flex items-center justify-center px-4 py-3.5 bg-gray-900 text-white rounded-2xl font-bold hover:bg-black transition-all active:scale-[0.98]"
+                >
+                    Misafir Olarak Gözat 🕵️
                 </button>
             </div>
         </div>

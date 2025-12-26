@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
@@ -11,9 +12,23 @@ import ToyDetails from './pages/ToyDetails';
 import ChatRoom from './pages/ChatRoom';
 import EditToy from './pages/EditToy';
 import ProtectedRoute from './components/ProtectedRoute';
+import OnboardingGuide from './components/OnboardingGuide';
 
 function App() {
-  const { currentUser } = useAuth();
+  const { currentUser, isGuest } = useAuth();
+  const [showGuide, setShowGuide] = useState(false);
+
+  useEffect(() => {
+    const hasSeenGuide = localStorage.getItem('hasSeenGuide');
+    if (!hasSeenGuide && (currentUser || isGuest)) {
+      setShowGuide(true);
+    }
+  }, [currentUser, isGuest]);
+
+  const handleGuideComplete = () => {
+    localStorage.setItem('hasSeenGuide', 'true');
+    setShowGuide(false);
+  };
 
   return (
     <div className="bg-gray-50 min-h-screen text-gray-900 font-sans">
@@ -85,7 +100,8 @@ function App() {
             }
           />
         </Routes>
-        {currentUser && <Navbar />}
+        {showGuide && <OnboardingGuide onComplete={handleGuideComplete} />}
+        {(currentUser || isGuest) && <Navbar />}
       </div>
     </div>
   );

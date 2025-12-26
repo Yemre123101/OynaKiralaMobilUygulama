@@ -1,7 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
     const location = useLocation();
+    const { isGuest } = useAuth();
 
     // Hide navbar in individual chat rooms and toy details
     if (
@@ -16,15 +18,22 @@ export default function Navbar() {
         return location.pathname.startsWith(path);
     };
 
-    const NavLink = ({ to, icon, label, isAction = false }) => {
+    const NavLink = ({ to, icon, label, isAction = false, requiresAuth = false }) => {
         const active = checkActive(to);
+
+        // If guest and requires auth, redirect to login
+        const linkTo = (isGuest && requiresAuth) ? '/login' : to;
 
         if (isAction) {
             return (
-                <Link to={to} className="flex flex-col items-center -mt-8">
+                <Link to={linkTo} className="flex flex-col items-center -mt-8">
                     <div className="bg-white p-3 rounded-full shadow-lg border-4 border-blue-600 scale-110">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
+                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${isGuest ? 'text-gray-400' : 'text-blue-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            {isGuest ? (
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            ) : (
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
+                            )}
                         </svg>
                     </div>
                     <span className="text-[10px] mt-1 font-bold text-white uppercase tracking-wider">{label}</span>
@@ -33,9 +42,13 @@ export default function Navbar() {
         }
 
         return (
-            <Link to={to} className="flex flex-col items-center flex-1">
+            <Link to={linkTo} className="flex flex-col items-center flex-1">
                 <div className={`p-2.5 rounded-full transition-all duration-300 ${active ? 'bg-white text-blue-600 shadow-md scale-110' : 'text-blue-100'}`}>
-                    {icon}
+                    {isGuest && requiresAuth ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    ) : icon}
                 </div>
                 <span className={`text-[10px] mt-0.5 font-medium transition-colors ${active ? 'text-white' : 'text-blue-200'}`}>
                     {label}
@@ -55,21 +68,25 @@ export default function Navbar() {
                 <NavLink
                     to="/sohbet"
                     label="Sohbet"
+                    requiresAuth={true}
                     icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>}
                 />
                 <NavLink
                     to="/ekle"
                     label="Ekle"
                     isAction={true}
+                    requiresAuth={true}
                 />
                 <NavLink
                     to="/kiralamalarim"
                     label="Kiralık"
+                    requiresAuth={true}
                     icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>}
                 />
                 <NavLink
                     to="/profil"
                     label="Profil"
+                    requiresAuth={true}
                     icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
                 />
             </div>
