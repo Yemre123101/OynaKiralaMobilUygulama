@@ -19,7 +19,10 @@ function App() {
   const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
-    const hasSeenGuide = localStorage.getItem('hasSeenGuide');
+    // Test amaçlı: Var olan hesaplarda da her seferinde görünmesi için aşağıdaki satırı yorum satırı yapıyorum.
+    // const hasSeenGuide = localStorage.getItem('hasSeenGuide');
+    const hasSeenGuide = false; // Test için her zaman false
+
     if (!hasSeenGuide && (currentUser || isGuest)) {
       setShowGuide(true);
     }
